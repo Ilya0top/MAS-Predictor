@@ -17,18 +17,8 @@ namespace mas::agent
             {
                 std::cout << "[CoolingAgent] Получен запрос: " << msg.content << "\n";
 
-                std::string content = msg.content;
-                size_t posLoad = content.find("load=");
-                size_t posTemp = content.find("extTemp=");
-
-                if (posLoad != std::string::npos)
-                {
-                    size_t endLoad = content.find(',', posLoad);
-                    std::string loadStr = content.substr(posLoad + 5, endLoad - posLoad - 5);
-                    m_loadPercent = std::stod(loadStr);
-                }
-                if (posTemp != std::string::npos)
-                    m_externalTemp = std::stod(content.substr(posTemp + 8));
+                m_loadPercent = m_blackboard->read("load").value();
+                m_externalTemp = m_blackboard->read("extTemp").value();
 
                 m_replyTo = msg.sender;
                 m_hasBrakeHeat = false;

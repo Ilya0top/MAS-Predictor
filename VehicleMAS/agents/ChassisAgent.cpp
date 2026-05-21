@@ -13,21 +13,9 @@ namespace mas::agent
         {
             std::cout << "[ChassisAgent] Получен запрос: " << msg.content << "\n";
 
-            std::string content = msg.content;
-            size_t posLoad = content.find("load=");
-            size_t posRoad = content.find("road=");
-
-            if (posLoad != std::string::npos)
-            {
-                size_t endLoad = content.find(',', posLoad);
-                std::string loadStr = content.substr(posLoad + 5, endLoad - posLoad - 5);
-                m_loadPercent = std::stod(loadStr);
-            }
-            if (posRoad != std::string::npos)
-            {
-                int roadVal = std::stoi(content.substr(posRoad + 5));
-                m_road = static_cast<RoadType>(roadVal);
-            }
+            m_loadPercent = m_blackboard->read("load").value();
+            int roadVal = static_cast<int>(m_blackboard->read("road").value());
+            m_road = static_cast<RoadType>(roadVal);
 
             m_replyTo = msg.sender;
             setState(AgentState::Ready);

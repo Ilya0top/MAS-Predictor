@@ -17,18 +17,8 @@ namespace mas::agent
             {
                 std::cout << "[TransmissionAgent] Получен запрос: " << msg.content << "\n";
 
-                std::string content = msg.content;
-                size_t posLoad = content.find("load=");
-                size_t posShifts = content.find("shifts=");
-
-                if (posLoad != std::string::npos)
-                {
-                    size_t endLoad = content.find(',', posLoad);
-                    std::string loadStr = content.substr(posLoad + 5, endLoad - posLoad - 5);
-                    m_loadPercent = std::stod(loadStr);
-                }
-                if (posShifts != std::string::npos)
-                    m_gearShifts = std::stoi(content.substr(posShifts + 7));
+                m_loadPercent = m_blackboard->read("load").value();
+                m_gearShifts = static_cast<int>(m_blackboard->read("shifts").value());
 
                 m_replyTo = msg.sender;
                 m_hasHeatFromEngine = false;

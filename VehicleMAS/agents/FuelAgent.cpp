@@ -13,11 +13,7 @@ namespace mas::agent
         {
             std::cout << "[FuelAgent] Получен запрос: " << msg.content << "\n";
 
-            std::string content = msg.content;
-            size_t posLoad = content.find("load=");
-
-            if (posLoad != std::string::npos)
-                m_loadPercent = std::stod(content.substr(posLoad + 5));
+            m_loadPercent = m_blackboard->read("load").value();
 
             m_replyTo = msg.sender;
             setState(AgentState::Ready);

@@ -38,42 +38,24 @@ namespace mas::agent
 
         std::cout << "\n[Coordinator] Запуск прогноза (Actor Model)\n";
 
+        m_blackboard->write("load", scenario.loadPercent);
+        m_blackboard->write("shifts", scenario.gearShiftsPerHour);
+        m_blackboard->write("brakes", scenario.brakesPerHour);
+        m_blackboard->write("road", static_cast<int>(scenario.road));
+        m_blackboard->write("extTemp", scenario.externalTemp);
+
         comm::Message req;
         req.type = comm::MessageType::Request;
         req.sender = m_id;
+        req.content = "check";
 
-        std::string roadStr = std::to_string(static_cast<int>(scenario.road));
-
-        req.receiver = "EngineAgent";
-        req.content = "load=" + std::to_string(scenario.loadPercent);
-        sendMessage(req);
-
-        req.receiver = "TransmissionAgent";
-        req.content = "load=" + std::to_string(scenario.loadPercent)
-            + ",shifts=" + std::to_string(scenario.gearShiftsPerHour);
-        sendMessage(req);
-
-        req.receiver = "BrakeAgent";
-        req.content = "load=" + std::to_string(scenario.loadPercent)
-            + ",brakes=" + std::to_string(scenario.brakesPerHour);
-        sendMessage(req);
-
-        req.receiver = "ChassisAgent";
-        req.content = "load=" + std::to_string(scenario.loadPercent) + ",road=" + roadStr;
-        sendMessage(req);
-
-        req.receiver = "CoolingAgent";
-        req.content = "load=" + std::to_string(scenario.loadPercent)
-            + ",extTemp=" + std::to_string(scenario.externalTemp);
-        sendMessage(req);
-
-        req.receiver = "FuelAgent";
-        req.content = "load=" + std::to_string(scenario.loadPercent);
-        sendMessage(req);
-
-        req.receiver = "TireAgent";
-        req.content = "load=" + std::to_string(scenario.loadPercent) + ",road=" + roadStr;
-        sendMessage(req);
+        req.receiver = "EngineAgent";       sendMessage(req);
+        req.receiver = "TransmissionAgent"; sendMessage(req);
+        req.receiver = "BrakeAgent";        sendMessage(req);
+        req.receiver = "ChassisAgent";      sendMessage(req);
+        req.receiver = "CoolingAgent";      sendMessage(req);
+        req.receiver = "FuelAgent";         sendMessage(req);
+        req.receiver = "TireAgent";         sendMessage(req);
 
         auto replies = m_broker->receiveAll(m_id, 7);
         for (const auto& r : replies)

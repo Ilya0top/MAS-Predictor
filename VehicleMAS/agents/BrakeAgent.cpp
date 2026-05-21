@@ -17,19 +17,8 @@ namespace mas::agent
             {
                 std::cout << "[BrakeAgent] Получен запрос: " << msg.content << "\n";
 
-                std::string content = msg.content;
-                size_t posLoad = content.find("load=");
-
-                if (posLoad != std::string::npos)
-                {
-                    size_t endLoad = content.find(',', posLoad);
-                    std::string loadStr = content.substr(posLoad + 5, endLoad - posLoad - 5);
-                    m_loadPercent = std::stod(loadStr);
-                }
-
-                size_t posBrakes = content.find("brakes=");
-                if (posBrakes != std::string::npos)
-                    m_brakesPerHour = std::stoi(content.substr(posBrakes + 7));
+                m_loadPercent = m_blackboard->read("load").value();
+                m_brakesPerHour = static_cast<int>(m_blackboard->read("brakes").value());
 
                 m_replyTo = msg.sender;
                 m_hasTireWear = false;

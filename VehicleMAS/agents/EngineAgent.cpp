@@ -16,7 +16,7 @@ namespace mas::agent
             if (msg.type == comm::MessageType::Request)
             {
                 std::cout << "[EngineAgent] Получен запрос: " << msg.content << "\n";
-                m_loadPercent = std::stod(msg.content.substr(msg.content.find("load=") + 5));
+                m_loadPercent = m_blackboard->read("load").value();
                 m_replyTo = msg.sender;
                 m_transOilTemp = 80.0;
                 m_hasFuelEff = false;
@@ -35,7 +35,7 @@ namespace mas::agent
             else if (msg.type == comm::MessageType::Request)
             {
                 std::cout << "[EngineAgent] Получен запрос: " << msg.content << "\n";
-                m_loadPercent = std::stod(msg.content.substr(msg.content.find("load=") + 5));
+                m_loadPercent = m_blackboard->read("load").value();
                 m_replyTo = msg.sender;
                 m_transOilTemp = 80.0;
                 m_hasFuelEff = false;
