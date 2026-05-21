@@ -15,17 +15,17 @@ void ShowRoadComparisonWindow(const Scenario& s, CoordinatorAgent& coordinator);
 void ShowAgentGraphWindow();
 
 // Глобальные данные для графа
-namespace GraphData 
+namespace GraphData
 {
-    const int N = 8;
-    float relX[N] = { 0.50f, 0.50f, 0.72f, 0.28f, 0.50f, 0.72f, 0.10f, 0.02f };
-    float relY[N] = { 0.85f, 0.25f, 0.25f, 0.25f, 0.05f, 0.05f, 0.25f, 0.55f };
-    const char* names[N] = { "Coordinator", "Engine", "Transmission", "Cooling", "Fuel", "Chassis", "Brake", "Tire" };
-    ImVec4 colors[N] = 
+    const int N = 9;
+    static float relX[N] = { 0.50f, 0.50f, 0.72f, 0.28f, 0.50f, 0.72f, 0.10f, 0.02f, 0.50f };
+    static float relY[N] = { 0.85f, 0.25f, 0.25f, 0.25f, 0.05f, 0.05f, 0.25f, 0.55f, 0.55f };
+    static const char* names[N] = { "Coordinator", "Engine", "Transmission", "Cooling", "Fuel", "Chassis", "Brake", "Tire", "Blackboard" };
+    static ImVec4 colors[N] =
     {
         ImVec4(1,0.8f,0.2f,1), ImVec4(0.2f,0.8f,0.2f,1), ImVec4(0.8f,0.6f,0.2f,1),
         ImVec4(0.3f,0.6f,1,1), ImVec4(0.8f,0.8f,0.2f,1), ImVec4(0.2f,0.4f,0.8f,1),
-        ImVec4(0.8f,0.2f,0.2f,1), ImVec4(0.5f,0.5f,0.5f,1)
+        ImVec4(0.8f,0.2f,0.2f,1), ImVec4(0.5f,0.5f,0.5f,1), ImVec4(0.6f, 0.6f, 0.6f, 1)
     };
     float animStart = -1.0f;
     int dragIdx = -1;
@@ -289,9 +289,9 @@ void ShowAgentGraphWindow()
 
     // Animation
     if (ImGui::Button("Animation")) animStart = (float)ImGui::GetTime();
-    ImGui::SameLine(); ImGui::Text("(agent communication phases)");
+    ImGui::SameLine(); ImGui::Text("(blackboard + agent communication)");
 
-    float ph1 = 0, ph2a = 0, ph2b = 0, ph2c = 0, ph2d = 0, ph2e = 0;
+    float ph1a = 0, ph1b = 0, ph2a = 0, ph2b = 0, ph2c = 0, ph2d = 0, ph2e = 0;
     float resFuel = 0, resChassis = 0, resTire = 0, resBrake = 0, resCooling = 0, resEngine = 0, resTrans = 0;
 
     auto cl = [](float v) { return v < 0 ? 0 : (v > 1 ? 1 : v); };
@@ -301,98 +301,49 @@ void ShowAgentGraphWindow()
         float totalDur = 8.0f;
         if (el > totalDur) { el = totalDur; animStart = -1.0f; }
 
-        // Фаза 1: 0.0 - 2.0 (Coordinator → все)
-        if (el < 2.0f) ph1 = (el < 1.0f) ? el : (2.0f - el);
+        // Фаза 1a: 0.0 - 1.0 (Coordinator → Blackboard, write)
+        if (el < 1.0f)
+            ph1a = (el < 0.5f) ? el / 0.5f : (1.0f - el) / 0.5f;
 
-        // Фаза 2a: 2.0 - 2.7 (Tire→Brake, Chassis→Engine, Fuel→Engine)
-        if (el > 2.0f && el < 2.7f) {
-            float t = el - 2.0f;
-            ph2a = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f;
-        }
-        // Fuel, Chassis, Tire — получили всё → 0.5 сек расчёт → ответ Coordinator
-        {
-            float start = 2.0f, delay = 0.5f;
-            if (el > start + delay) {
-                float t = el - start - delay;
-                float fade = (t < 0.3f) ? t / 0.3f : 1.0f;
-                resFuel = cl(fade); resChassis = cl(fade); resTire = cl(fade);
-            }
-        }
+        // Фаза 1b: 1.0 - 2.0 (Blackboard → все агенты, read)
+        else if (el < 2.0f)
+            ph1b = (el < 1.5f) ? (el - 1.0f) / 0.5f : (2.0f - el) / 0.5f;
 
-        // Фаза 2b: 2.7 - 3.4 (Brake→Cooling)
-        if (el > 2.7f && el < 3.4f) {
-            float t = el - 2.7f;
-            ph2b = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f;
-        }
-        // Brake — получил → 0.5 сек расчёт → ответ Coordinator
-        {
-            float start = 2.7f, delay = 0.5f;
-            if (el > start + delay) {
-                float t = el - start - delay;
-                float fade = (t < 0.3f) ? t / 0.3f : 1.0f;
-                resBrake = cl(fade);
-            }
-        }
+        // Фаза 2a: 2.0 - 2.7
+        if (el > 2.0f && el < 2.7f) { float t = el - 2.0f; ph2a = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f; }
+        { float start = 2.0f, delay = 0.5f; if (el > start + delay) { float t = el - start - delay; float fade = (t < 0.3f) ? t / 0.3f : 1.0f; resFuel = cl(fade); resChassis = cl(fade); resTire = cl(fade); } }
 
-        // Фаза 2c: 3.4 - 4.1 (Cooling→Engine, Cooling→Transmission)
-        if (el > 3.4f && el < 4.1f) {
-            float t = el - 3.4f;
-            ph2c = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f;
-        }
-        // Cooling — получил → 0.5 сек расчёт → ответ Coordinator
-        {
-            float start = 3.4f, delay = 0.5f;
-            if (el > start + delay) {
-                float t = el - start - delay;
-                float fade = (t < 0.3f) ? t / 0.3f : 1.0f;
-                resCooling = cl(fade);
-            }
-        }
+        // Фаза 2b: 2.7 - 3.4
+        if (el > 2.7f && el < 3.4f) { float t = el - 2.7f; ph2b = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f; }
+        { float start = 2.7f, delay = 0.5f; if (el > start + delay) { float t = el - start - delay; float fade = (t < 0.3f) ? t / 0.3f : 1.0f; resBrake = cl(fade); } }
 
-        // Фаза 2d: 4.1 - 4.8 (Engine→Transmission)
-        if (el > 4.1f && el < 4.8f) {
-            float t = el - 4.1f;
-            ph2d = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f;
-        }
+        // Фаза 2c: 3.4 - 4.1
+        if (el > 3.4f && el < 4.1f) { float t = el - 3.4f; ph2c = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f; }
+        { float start = 3.4f, delay = 0.5f; if (el > start + delay) { float t = el - start - delay; float fade = (t < 0.3f) ? t / 0.3f : 1.0f; resCooling = cl(fade); } }
 
-        // Фаза 2e: 4.8 - 5.5 (Transmission→Engine — tKPP)
-        if (el > 4.8f && el < 5.5f) {
-            float t = el - 4.8f;
-            ph2e = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f;
-        }
-        // Transmission → ответ Coordinator (после общения)
-        {
-            float start = 4.8f, delay = 0.5f;
-            if (el > start + delay) {
-                float t = el - start - delay;
-                float fade = (t < 0.3f) ? t / 0.3f : 1.0f;
-                resTrans = cl(fade);
-            }
-        }
-        // Engine → ждёт tKPP от Transmission (5.3с) → 0.5 сек расчёт → ответ Coordinator
-        {
-            float start = 5.3f, delay = 0.5f;
-            if (el > start + delay) {
-                float t = el - start - delay;
-                float fade = (t < 0.3f) ? t / 0.3f : 1.0f;
-                resEngine = cl(fade);
-            }
-        }
+        // Фаза 2d: 4.1 - 4.8
+        if (el > 4.1f && el < 4.8f) { float t = el - 4.1f; ph2d = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f; }
 
-        // Общее затухание всех res-стрелок после 6.5 сек
-        if (el > 6.5f) {
-            float fade = cl((7.5f - el) / 1.0f);
-            resFuel *= fade; resChassis *= fade; resTire *= fade;
-            resBrake *= fade; resCooling *= fade; resEngine *= fade; resTrans *= fade;
-        }
+        // Фаза 2e: 4.8 - 5.5
+        if (el > 4.8f && el < 5.5f) { float t = el - 4.8f; ph2e = (t < 0.35f) ? t / 0.35f : (0.7f - t) / 0.35f; }
+        { float start = 4.8f, delay = 0.5f; if (el > start + delay) { float t = el - start - delay; float fade = (t < 0.3f) ? t / 0.3f : 1.0f; resTrans = cl(fade); } }
+        { float start = 5.3f, delay = 0.5f; if (el > start + delay) { float t = el - start - delay; float fade = (t < 0.3f) ? t / 0.3f : 1.0f; resEngine = cl(fade); } }
+
+        if (el > 6.5f) { float fade = cl((7.5f - el) / 1.0f); resFuel *= fade; resChassis *= fade; resTire *= fade; resBrake *= fade; resCooling *= fade; resEngine *= fade; resTrans *= fade; }
     }
 
     struct Arrow { int from, to; const char* label; ImVec4 color; float phase; };
     Arrow arrows[] = {
-        // Фаза 1
-        {0,1,"req",ImVec4(1,0.8f,0.2f,1),ph1},{0,2,"req",ImVec4(1,0.8f,0.2f,1),ph1},{0,3,"req",ImVec4(1,0.8f,0.2f,1),ph1},
-        {0,4,"req",ImVec4(1,0.8f,0.2f,1),ph1},{0,5,"req",ImVec4(1,0.8f,0.2f,1),ph1},{0,6,"req",ImVec4(1,0.8f,0.2f,1),ph1},
-        {0,7,"req",ImVec4(1,0.8f,0.2f,1),ph1},
+        // Фаза 1a: Coordinator → Blackboard
+        {0, 8, "write", ImVec4(1, 0.5f, 0, 1), ph1a},
+        // Фаза 1b: Blackboard → все агенты
+        {8, 1, "read", ImVec4(1, 0.5f, 0, 1), ph1b},
+        {8, 2, "read", ImVec4(1, 0.5f, 0, 1), ph1b},
+        {8, 3, "read", ImVec4(1, 0.5f, 0, 1), ph1b},
+        {8, 4, "read", ImVec4(1, 0.5f, 0, 1), ph1b},
+        {8, 5, "read", ImVec4(1, 0.5f, 0, 1), ph1b},
+        {8, 6, "read", ImVec4(1, 0.5f, 0, 1), ph1b},
+        {8, 7, "read", ImVec4(1, 0.5f, 0, 1), ph1b},
         // Фаза 2a
         {7,6,"wear",ImVec4(0.5f,0.5f,0.5f,1),ph2a},{5,1,"vibro",ImVec4(0.5f,0.3f,1,1),ph2a},{4,1,"KPD",ImVec4(1,0.8f,0.2f,1),ph2a},
         // Фаза 2b
@@ -403,14 +354,9 @@ void ShowAgentGraphWindow()
         {1,2,"heat",ImVec4(1,0.4f,0.2f,1),ph2d},
         // Фаза 2e
         {2,1,"tKPP",ImVec4(1,0.5f,0,1),ph2e},
-        // Ответы Coordinator (появляются когда агент готов)
-        {4,0,"res",ImVec4(0.5f,1,0.5f,1),resFuel},
-        {5,0,"res",ImVec4(0.5f,1,0.5f,1),resChassis},
-        {7,0,"res",ImVec4(0.5f,1,0.5f,1),resTire},
-        {6,0,"res",ImVec4(0.5f,1,0.5f,1),resBrake},
-        {3,0,"res",ImVec4(0.5f,1,0.5f,1),resCooling},
-        {1,0,"res",ImVec4(0.5f,1,0.5f,1),resEngine},
-        {2,0,"res",ImVec4(0.5f,1,0.5f,1),resTrans},
+        // Ответы Coordinator
+        {4,0,"res",ImVec4(0.5f,1,0.5f,1),resFuel},{5,0,"res",ImVec4(0.5f,1,0.5f,1),resChassis},{7,0,"res",ImVec4(0.5f,1,0.5f,1),resTire},
+        {6,0,"res",ImVec4(0.5f,1,0.5f,1),resBrake},{3,0,"res",ImVec4(0.5f,1,0.5f,1),resCooling},{1,0,"res",ImVec4(0.5f,1,0.5f,1),resEngine},{2,0,"res",ImVec4(0.5f,1,0.5f,1),resTrans},
     };
 
     // Отрисовка стрелок
@@ -445,7 +391,8 @@ void ShowAgentGraphWindow()
 
     ImGui::SetCursorPos(ImVec2(10, winH + 8));
     if (ImGui::Button("Reset Positions")) {
-        float dx[N] = { 0.5f,0.5f,0.72f,0.28f,0.5f,0.72f,0.1f,0.02f }, dy[N] = { 0.85f,0.25f,0.25f,0.25f,0.05f,0.05f,0.25f,0.55f };
+        float dx[N] = { 0.5f,0.5f,0.72f,0.28f,0.5f,0.72f,0.1f,0.02f,0.5f };
+        float dy[N] = { 0.85f,0.25f,0.25f,0.25f,0.05f,0.05f,0.25f,0.55f,0.55f };
         for (int i = 0; i < N; i++) { relX[i] = dx[i]; relY[i] = dy[i]; }
     }
     ImGui::End();
